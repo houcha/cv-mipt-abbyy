@@ -1,0 +1,3 @@
+[submodule "demosaicing/bitmap"]
+	path = demosaicing/bitmap
+	url = https://github.com/ArashPartow/bitmap
