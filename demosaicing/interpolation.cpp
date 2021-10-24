@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <algorithm>
-#include "bitmap_image.hpp"
+#include "bitmap/bitmap_image.hpp"
 #include "block.hpp"
 #include "ppg.hpp"
 
@@ -31,11 +31,7 @@ int main(int argc, char** argv) {
     for (size_t x = y % 2; x + block5x5.Size() <= width; x += 2) {
       block5x5.Read(image, x, y);
 
-      if (y % 2 == 0) { // red center
-        interpolate_green_for_red(block5x5.Data());
-      } else {          // blue center
-        interpolate_green_for_blue(block5x5.Data());
-      }
+      interpolate_G4RB(block5x5.Data(), y % 2 == 0);
 
       block5x5.Write(image);
     }
@@ -48,7 +44,7 @@ int main(int argc, char** argv) {
     for (size_t x = (y+1) % 2; x + block3x3.Size() <= width; x += 2) {
       block3x3.Read(image, x, y);
 
-      interpolate_RB_for_green(block3x3.Data());
+      interpolate_RB4G(block3x3.Data(), y % 2 == 0);
 
       block3x3.Write(image);
     }
@@ -59,11 +55,7 @@ int main(int argc, char** argv) {
     for (size_t x = y % 2; x + block5x5.Size() <= width; x += 2) {
       block5x5.Read(image, x, y);
 
-      if (y % 2 == 0) { // red center
-        interpolate_blue_for_red(block5x5.Data());
-      } else {          // blue center
-        interpolate_red_for_blue(block5x5.Data());
-      }
+      interpolate_B4R_and_R4B(block5x5.Data(), y % 2 == 0);
 
       block5x5.Write(image);
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bitmap_image.hpp"
+#include "bitmap/bitmap_image.hpp"
 
 
 template <int BLOCK_SIZE>
@@ -24,6 +24,16 @@ struct Block {
     }
   }
 
+  void Print() {
+    for (size_t y = 0; y < BLOCK_SIZE; ++y) {
+      for (size_t x = 0; x < BLOCK_SIZE; ++x) {
+        rgb_t d = data_[y*BLOCK_SIZE + x];
+        printf("%3d,%3d,%3d\t", d.red, d.green, d.blue);
+      }
+      printf("\n\n");
+    }
+  }
+
   inline rgb_t* Data() {
     return data_;
   }
@@ -37,13 +47,4 @@ struct Block {
   rgb_t data_[BLOCK_SIZE * BLOCK_SIZE];
 };
 
-
-//void print_block(uint8_t* block) {
-//  for (size_t y = 0; y < BLOCK_SIZE; ++y) {
-//    for (size_t x = 0; x < BLOCK_SIZE; ++x) {
-//      printf("%d ", block[y*BLOCK_SIZE + x]);
-//    }
-//    printf("\n");
-//  }
-//}
 
