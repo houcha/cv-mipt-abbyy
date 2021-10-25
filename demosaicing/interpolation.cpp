@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <algorithm>
+#include <chrono>
 #include "bitmap/bitmap_image.hpp"
 #include "block.hpp"
 #include "ppg.hpp"
@@ -20,6 +21,8 @@ int main(int argc, char** argv) {
     printf("Error - Failed to open: %s\n", input_file);
     return 2;
   }
+
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
 
   const uint32_t height = image.height();
   const uint32_t width  = image.width();
@@ -60,6 +63,14 @@ int main(int argc, char** argv) {
       block5x5.Write(image);
     }
   }
+
+  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+
+  std::cout
+    << "Time elapsed: "
+    << std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()
+    << "ms"
+    << std::endl;
 
   image.save_image(output_file);
 
