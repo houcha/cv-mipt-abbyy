@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
   cv::Mat src = cv::imread(input);
 
   FastHoughTransformer fht(src, 20);
-  fht.WriteDrt("drtAnalyt-2-4.jpg");
+  fht.WriteDrt("drt.jpg");
   const int slopeAngle = fht.GetDrtMaxDistortionAngle();
   printf("Slope angle: %d\n", slopeAngle);
 

@@ -76,7 +76,7 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
   // from -pi/2 to -pi/4
   cv::Mat Rclockwise = FastHoughTransformFrom0ToPiDiv4(Iclockwise);
 
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
+  for (int theta = 0; theta <= drt.rows/4; ++theta) {
     for (int d = -n; d < nSqrt2/2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
       int x = int(abs(d) / cos(thetaRad));
@@ -88,7 +88,7 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
       }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(theta, d) += Rclockwise.at<int>(y, x);
+      drt.at<int>(theta, d - nSqrt2) += Rclockwise.at<int>(y, x);
     }
   }
 
@@ -107,14 +107,14 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
       }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2 - theta, d) += RclockwiseT.at<int>(y, x);
+      drt.at<int>(drt.rows/2-1 - theta, d + nSqrt2) += RclockwiseT.at<int>(y, x);
     }
   }
 
   // from 0 to pi/4
   cv::Mat R = FastHoughTransformFrom0ToPiDiv4(I);
 
-  for (int theta = 0; theta <= drt.rows/4; ++theta) {
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
     for (int d = 0; d < nSqrt2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
       //const int x = (int(d / cos(thetaRad) - n * tan(thetaRad)) + 2*n) % (2*n);
@@ -184,7 +184,7 @@ int FastHoughTransformer::GetDrtMaxDistortionAngle() const {
   int maxDistortion = 0;
   int slopeAngle = 0;
 
-  for (int theta = 0; theta < drt.rows; ++theta) {
+  for (int theta = int(drt.rows/4); theta < int(3*drt.rows/4); ++theta) {
 
     int currentDistortion = 0;
     for (int d = 0; d < drt.cols; ++d) {
