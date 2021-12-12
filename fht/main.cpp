@@ -21,6 +21,10 @@ int DegreeToGridTicks(double deg, int ticksInGrid) {
   return int(deg * ticksInGrid / DegreesInPi);
 }
 
+double GridTicksToDegree(int ticks, int ticksInGrid) {
+  return (double)ticks / ticksInGrid;
+}
+
 
 /// FHT from -pi/2 to -pi/4
 cv::Mat FHT_mPi2_to_mPi4(const cv::Mat& I) {
@@ -35,7 +39,6 @@ cv::Mat FHT_mPi2_to_mPi4(const cv::Mat& I) {
     const int yStep = pow(2, i);
     const int yStepPrev = pow(2, i-1);
 
-    // TODO: does x direction matter?
     for (int y = 0; y < n; y += yStep) {
       for (int x = 0; x < 2*n; ++x) {
         for (int a = 0; a < yStep; ++a) {
@@ -64,108 +67,52 @@ void FastHoughTransform(const cv::Mat& I, cv::Mat& drt) {
   // from -pi/2 to -pi/4
   cv::Mat R = FHT_mPi2_to_mPi4(I);
 
-  for (int x = 0; x < n; ++x) {
-    for (int a = 0; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      // some geometry behind this
-      const int d = int((x + a) * cos(thetaRads));
-      //const int d = int(x * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += R.at<float>(a, x);
-    }
-  }
-
-  for (int x = n; x < 2*n; ++x) {
-    for (int a = 2*n - x - 1; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int((x + a - 2*n) * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += R.at<float>(a, x);
+  for (int theta = 0; theta <= drt.rows/4; ++theta) {
+    for (int d = 0; d < drt.cols; ++d) {
+      const double thetaRad = (double)theta * Pi / drt.rows;
+      const int x = (int(d / cos(thetaRad) - n * tan(thetaRad)) + 2*n) % (2*n);
+      const int y = int(n * tan(thetaRad));
+      assert(0 <= x && x < 2*n && 0 <= y && y < n);
+      drt.at<float>(theta, d) += R.at<float>(y, x);
     }
   }
 
   // from -pi/4 to 0
   cv::Mat Rt = FHT_mPi2_to_mPi4(It);
 
-  for (int x = 0; x < n; ++x) {
-    for (int a = 0; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int((n - x) * cos(thetaRads));
-      //const int d = int(x * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi/2 - DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += Rt.at<float>(a, x);
-    }
-  }
-
-  for (int x = n; x < 2*n; ++x) {
-    for (int a = 2*n - x - 1; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int((3*n - x) * cos(thetaRads));
-      //const int d = int(x * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi/2 - DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += Rt.at<float>(a, x);
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
+    for (int d = 0; d < drt.cols; ++d) {
+      const double thetaRad = (double)theta * Pi / drt.rows;
+      const int x = (n - int(d / cos(thetaRad)) + 2*n) % (2*n);
+      const int y = int(n * tan(thetaRad));
+      assert(0 <= x && x < 2*n && 0 <= y && y < n);
+      drt.at<float>(drt.rows/2 - theta, d) += Rt.at<float>(y, x);
     }
   }
 
   // from 0 to pi/4
   cv::Mat Rclockwise = FHT_mPi2_to_mPi4(Iclockwise);
 
-  for (int x = 0; x < n; ++x) {
-    for (int a = 0; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int(x * cos(thetaRads));
-      //const int d = int((n-x) * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi/2 + DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += Rclockwise.at<float>(a, x);
-    }
-  }
-
-  for (int x = n; x < 2*n; ++x) {
-    for (int a = 2*n - x - 1; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int((2*n - x) * cos(thetaRads));
-
-      const double thetaDegs = DegreesInPi/2 + DegreesInPi * thetaRads/Pi;
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows);
-      drt.at<float>(theta, d) += Rclockwise.at<float>(a, x);
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
+    for (int d = 0; d < drt.cols; ++d) {
+      const double thetaRad = (double)theta * Pi / drt.rows;
+      const int x = (int(d / cos(thetaRad)) + 2*n) % (2*n);
+      const int y = int(n * tan(thetaRad));
+      assert(0 <= x && x < 2*n && 0 <= y && y < n);
+      drt.at<float>(drt.rows/2 + theta, d) += Rclockwise.at<float>(y, x);
     }
   }
 
   // from pi/4 to pi/2
   cv::Mat RclockwiseT = FHT_mPi2_to_mPi4(IclockwiseT);
 
-  for (int x = 0; x < n; ++x) {
-    for (int a = 0; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int(x * cos(thetaRads));
-      //const int d = int((x + a) * cos(thetaRads));
-
-      const double thetaDegs = (DegreesInPi - DegreesInPi * thetaRads/Pi);
-      // avoid +90, since there's -90 for this case
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows) % drt.rows;
-      drt.at<float>(theta, d) += RclockwiseT.at<float>(a, x);
-    }
-  }
-
-  for (int x = n; x < 2*n; ++x) {
-    for (int a = 2*n - x - 1; a < n; ++a) {
-      const double thetaRads = atan2(a, n-1);
-      const int d = int((2*n - x) * cos(thetaRads));
-
-      const double thetaDegs = (DegreesInPi - DegreesInPi * thetaRads/Pi);
-      // avoid +90, since there's -90 for this case
-      const int theta = DegreeToGridTicks(thetaDegs, drt.rows) % drt.rows;
-      drt.at<float>(theta, d) += RclockwiseT.at<float>(a, x);
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
+    for (int d = 0; d < drt.cols; ++d) {
+      const double thetaRad = (double)theta * Pi / drt.rows;
+      int x = (int(d / cos(thetaRad)) + 2*n) % (2*n);
+      const int y = int(n * tan(thetaRad));
+      assert(0 <= x && x < 2*n && 0 <= y && y < n);
+      drt.at<float>(drt.rows-1 - theta, d) += RclockwiseT.at<float>(y, x);
     }
   }
 }
@@ -190,13 +137,12 @@ int GetImgSlopeAngle(const cv::Mat& img) {
   cv::split(imgPadded, channels);
 
   // discrete Radon transform
-  //const int ticksInDegree = n / 45;
-  int ticksInDegree = 1;
-  while(DegreesInPi * ticksInDegree < n) {
-    ++ticksInDegree;
-  }
+  const int ticksInDegree = 20;
+  //while(DegreesInPi * ticksInDegree < n) {
+  //  ++ticksInDegree;
+  //}
 
-  cv::Mat drt(DegreesInPi * ticksInDegree, n, CV_32F, cv::Scalar(0.));
+  cv::Mat drt(DegreesInPi * ticksInDegree, int(n * sqrt(2.)), CV_32F, cv::Scalar(0.));
 
   for (const cv::Mat& channel : channels) {
     FastHoughTransform(channel, drt);
@@ -215,7 +161,7 @@ int GetImgSlopeAngle(const cv::Mat& img) {
       assert(0 <= drtu.at<uchar>(theta, d) && drtu.at<uchar>(theta, d) <= 255);
     }
   }
-  cv::imwrite("drt.jpg", drtu);
+  cv::imwrite("drtAnalyt-2-4.jpg", drtu);
 
   float maxDistortion = 0;
   int slopeAngle = 0;
