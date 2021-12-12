@@ -44,12 +44,11 @@ FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetaliza
   assert(imgPadded.rows == imgPadded.cols);
   assert(IsPowerOf2(imgPadded.rows));
 
-  const int dPositiveMax = int(n * sqrt(2.));
-  const int dNegativeMax = 0; //dPositiveMax/2.;
+  const int nSqrt2 = int(n * sqrt(2.));
 
   cv::Mat drt(
       DegreesInPi * ticksInDegree,
-      dPositiveMax + dNegativeMax,
+      2 * nSqrt2, // both positive and negative d
       CV_32S,
       cv::Scalar(0)
   );
@@ -67,67 +66,95 @@ FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetaliza
 
 
 void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
+  const int nSqrt2 = int(n * sqrt(2.));
+
   cv::Mat It = I.t();
   cv::Mat Iclockwise(n, n, I.type());
   cv::rotate(I, Iclockwise, cv::ROTATE_90_CLOCKWISE);
   cv::Mat IclockwiseT = Iclockwise.t();
 
   // from -pi/2 to -pi/4
-  cv::Mat R = FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(I);
+  cv::Mat Rclockwise = FastHoughTransformFrom0ToPiDiv4(Iclockwise);
 
-  for (int theta = 0; theta <= drt.rows/4; ++theta) {
-    for (int d = 0; d < drt.cols; ++d) {
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
+    for (int d = -n; d < nSqrt2/2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
-      const int x = (int(d / cos(thetaRad) - n * tan(thetaRad)) + 2*n) % (2*n);
+      int x = int(abs(d) / cos(thetaRad));
+      if (n <= x) {
+        continue;
+      }
+      if (d > 0) {
+        x = 2*n - x;
+      }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(theta, d) += R.at<int>(y, x);
+      drt.at<int>(theta, d) += Rclockwise.at<int>(y, x);
     }
   }
 
   // from -pi/4 to 0
-  cv::Mat Rt = FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(It);
+  cv::Mat RclockwiseT = FastHoughTransformFrom0ToPiDiv4(IclockwiseT);
 
   for (int theta = 0; theta < drt.rows/4; ++theta) {
-    for (int d = 0; d < drt.cols; ++d) {
+    for (int d = -nSqrt2/2; d < n; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
-      const int x = (n - int(d / cos(thetaRad)) + 2*n) % (2*n);
+      int x = int(abs(d) / cos(thetaRad));
+      if (n <= x) {
+        continue;
+      }
+      if (d < 0) {
+        x = 2*n - x;
+      }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2 - theta, d) += Rt.at<int>(y, x);
+      drt.at<int>(drt.rows/2 - theta, d) += RclockwiseT.at<int>(y, x);
     }
   }
 
   // from 0 to pi/4
-  cv::Mat Rclockwise = FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(Iclockwise);
+  cv::Mat R = FastHoughTransformFrom0ToPiDiv4(I);
 
-  //const int dMax = int(drt.cols * sqrt(2.)/2.);
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
-    for (int d = 0; d < drt.cols; ++d) {
+  for (int theta = 0; theta <= drt.rows/4; ++theta) {
+    for (int d = 0; d < nSqrt2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
-      const int x = (int(d / cos(thetaRad)) + 2*n) % (2*n);
+      //const int x = (int(d / cos(thetaRad) - n * tan(thetaRad)) + 2*n) % (2*n);
+      int x = int(d / cos(thetaRad) - n * tan(thetaRad));
+
+      if (n <= x) {
+        continue;
+      }
+      if (x < 0) {
+        x = 2*n + x;
+      }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2 + theta, d) += Rclockwise.at<int>(y, x);
+      drt.at<int>(drt.rows/2 + theta, nSqrt2 + d) += R.at<int>(y, x);
     }
   }
 
   // from pi/4 to pi/2
-  cv::Mat RclockwiseT = FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(IclockwiseT);
+  cv::Mat Rt = FastHoughTransformFrom0ToPiDiv4(It);
 
   for (int theta = 0; theta < drt.rows/4; ++theta) {
-    for (int d = 0; d < drt.cols; ++d) {
+    for (int d = 0; d < nSqrt2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
-      const int x = (int(d / cos(thetaRad)) + 2*n) % (2*n);
-      //const int x = int(d / cos(thetaRad));
+      //const int x = (n - int(d / cos(thetaRad)) + 2*n) % (2*n);
       const int y = int(n * tan(thetaRad));
+
+      int x = n - int(d / cos(thetaRad));
+      if (x < 0) {
+        if (y + x < 0) {
+          continue;
+        }
+        x = 2*n + x;
+      }
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows-1 - theta, d) += RclockwiseT.at<int>(y, x);
+      drt.at<int>(drt.rows-1 - theta, nSqrt2 + d) += Rt.at<int>(y, x);
     }
   }
 }
 
-cv::Mat FastHoughTransformer::FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(const cv::Mat& I) {
+cv::Mat FastHoughTransformer::FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I) {
   cv::Mat R(n, 2*n, CV_32S, cv::Scalar(0));
   I.copyTo(R(cv::Rect(0, 0, n, n)));
 

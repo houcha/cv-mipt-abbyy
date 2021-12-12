@@ -18,6 +18,6 @@ class FastHoughTransformer {
     /// Fill R_LgN(a, x) table for -pi/2 to pi/2
     void FastHoughTransform(const cv::Mat& I);
     /// Fill R_LgN(a, x) table for -pi/2 to -pi/4 starting upper left corner
-    cv::Mat FastHoughTransformFromMinusPiDiv2ToMinusPiDiv4(const cv::Mat& I);
+    cv::Mat FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I);
 };
 
