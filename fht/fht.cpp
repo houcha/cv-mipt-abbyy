@@ -94,7 +94,7 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
   // from -pi/2 to -pi/4
   cv::Mat Rclockwise = FastHoughTransformFrom0ToPiDiv4(Iclockwise);
 
-  for (int theta = 0; theta <= drt.rows/4; ++theta) {
+  for (int theta = 0; theta < drt.rows/4; ++theta) {
     for (int d = -n; d < nSqrt2/2; ++d) {
       const double thetaRad = (double)theta * Pi / drt.rows;
       int x = int(abs(d) / cos(thetaRad));
@@ -106,7 +106,7 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
       }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(theta, d - nSqrt2) += Rclockwise.at<int>(y, x);
+      drt.at<int>(theta, nSqrt2 + d) += Rclockwise.at<int>(y, x);
     }
   }
 
@@ -125,7 +125,7 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
       }
       const int y = int(n * tan(thetaRad));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2-1 - theta, d + nSqrt2) += RclockwiseT.at<int>(y, x);
+      drt.at<int>(drt.rows/2-1 - theta, nSqrt2 + d) += RclockwiseT.at<int>(y, x);
     }
   }
 
