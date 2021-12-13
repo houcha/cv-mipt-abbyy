@@ -15,14 +15,6 @@ int RoundToNextPowerOf2(int x) {
   return pow(2, ceil(log2(double(x))));
 }
 
-int DegreeToGridTicks(double deg, int ticksInGrid) {
-  return int(deg * ticksInGrid / DegreesInPi);
-}
-
-double GridTicksToDegree(int ticks, int ticksInGrid) {
-  return (double)ticks / ticksInGrid;
-}
-
 void Normalize(cv::Mat& drt) {
   double minVal;
   double maxVal;
@@ -40,9 +32,9 @@ void Normalize(cv::Mat& drt) {
 }
 
 
-FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetalization):
+FastHoughTransformer::FastHoughTransformer(const cv::Mat& img):
   n(RoundToNextPowerOf2(std::max(img.cols, img.rows))),
-  ticksInDegree(thetaDetalization)
+  ticksInDegree(n/(DegreesInPi/2))
 {
   // Pad
   cv::Mat imgPadded(n, n, img.type());
@@ -63,8 +55,8 @@ FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetaliza
   const int nSqrt2 = int(n * sqrt(2.));
 
   cv::Mat drtNew(
-      DegreesInPi * ticksInDegree,
-      2 * nSqrt2, // both positive and negative d
+      (DegreesInPi/2) * ticksInDegree,
+      nSqrt2/2 + nSqrt2, // count positive and negative d
       CV_32S,
       cv::Scalar(0)
   );
@@ -91,83 +83,44 @@ void FastHoughTransformer::FastHoughTransform(const cv::Mat& I) {
   cv::rotate(I, Iclockwise, cv::ROTATE_90_CLOCKWISE);
   cv::Mat IclockwiseT = Iclockwise.t();
 
-  // from -pi/2 to -pi/4
+  // from 3pi/4 to pi/2
   cv::Mat Rclockwise = FastHoughTransformFrom0ToPiDiv4(Iclockwise);
 
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
-    for (int d = -n; d < nSqrt2/2; ++d) {
-      const double thetaRad = (double)theta * Pi / drt.rows;
-      int x = int(abs(d) / cos(thetaRad));
-      if (n <= x) {
-        continue;
-      }
-      if (d > 0) {
-        x = 2*n - x;
-      }
-      const int y = int(n * tan(thetaRad));
-      assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(theta, nSqrt2 + d) += Rclockwise.at<int>(y, x);
-    }
-  }
-
-  // from -pi/4 to 0
-  cv::Mat RclockwiseT = FastHoughTransformFrom0ToPiDiv4(IclockwiseT);
-
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
+  for (int theta = 0; theta < drt.rows/2; ++theta) {
     for (int d = -nSqrt2/2; d < n; ++d) {
-      const double thetaRad = (double)theta * Pi / drt.rows;
-      int x = int(abs(d) / cos(thetaRad));
+      const double thetaRad = (double)theta * (Pi/2) / drt.rows;
+      int x = int(round(abs(d) / cos(thetaRad)));
       if (n <= x) {
         continue;
       }
       if (d < 0) {
         x = 2*n - x;
       }
-      const int y = int(n * tan(thetaRad));
+      const int y = int(round(n * tan(thetaRad)));
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2-1 - theta, nSqrt2 + d) += RclockwiseT.at<int>(y, x);
-    }
-  }
-
-  // from 0 to pi/4
-  cv::Mat R = FastHoughTransformFrom0ToPiDiv4(I);
-
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
-    for (int d = 0; d < nSqrt2; ++d) {
-      const double thetaRad = (double)theta * Pi / drt.rows;
-      //const int x = (int(d / cos(thetaRad) - n * tan(thetaRad)) + 2*n) % (2*n);
-      int x = int(d / cos(thetaRad) - n * tan(thetaRad));
-
-      if (n <= x) {
-        continue;
-      }
-      if (x < 0) {
-        x = 2*n + x;
-      }
-      const int y = int(n * tan(thetaRad));
-      assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows/2 + theta, nSqrt2 + d) += R.at<int>(y, x);
+      drt.at<int>(drt.rows/2-1 - theta, nSqrt2/2 + d) += Rclockwise.at<int>(y, x);
     }
   }
 
   // from pi/4 to pi/2
   cv::Mat Rt = FastHoughTransformFrom0ToPiDiv4(It);
 
-  for (int theta = 0; theta < drt.rows/4; ++theta) {
+  for (int theta = 0; theta < drt.rows/2; ++theta) {
     for (int d = 0; d < nSqrt2; ++d) {
-      const double thetaRad = (double)theta * Pi / drt.rows;
+      const double thetaRad = (double)theta * (Pi/2) / drt.rows;
       //const int x = (n - int(d / cos(thetaRad)) + 2*n) % (2*n);
-      const int y = int(n * tan(thetaRad));
+      const int y = int(round(n * tan(thetaRad)));
 
-      int x = n - int(d / cos(thetaRad));
+      int x = n - int(round(d / cos(thetaRad)));
       if (x < 0) {
         if (y + x < 0) {
           continue;
         }
         x = 2*n + x;
       }
+
       assert(0 <= x && x < 2*n && 0 <= y && y < n);
-      drt.at<int>(drt.rows-1 - theta, nSqrt2 + d) += Rt.at<int>(y, x);
+      drt.at<int>(drt.rows/2 + theta, nSqrt2/2 + d) += Rt.at<int>(y, x);
     }
   }
 }
@@ -199,27 +152,59 @@ cv::Mat FastHoughTransformer::FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I) 
 
 
 int FastHoughTransformer::GetDrtMaxDistortionAngle() const {
-  uint64_t maxDistortion = 0;
+  double maxDispersion = 0.;
   int slopeAngle = 0;
 
-  for (int theta = 0; theta < drt.rows; ++theta) {
-    uint64_t currentDistortion = 0;
+  const int angleStep = 1;
 
-    for (int d = 0; d < drt.cols; ++d) {
-      const uint64_t val = (uint64_t)drt.at<int>(theta, d);
-      currentDistortion += val*val;
+  for (int angle = -DegreesInPi/4; angle < DegreesInPi/4; angle += angleStep) {
+    uint64_t sum = 0;
+    uint64_t sumSquared = 0;
+    int count = 0;
+
+    for (int theta = 0; theta < ticksInDegree * angleStep; ++theta) {
+      for (int d = 0; d < drt.cols; ++d) {
+        const uint64_t val = (uint64_t)drt.at<int>((angle + DegreesInPi/4)*ticksInDegree + theta, d);
+        count += val == 0 ? 0 : 1;
+        sum += val;
+        sumSquared += val*val;
+      }
     }
 
-    if (maxDistortion < currentDistortion) {
-      maxDistortion = currentDistortion;
-      slopeAngle = theta / ticksInDegree - DegreesInPi/2;
+    if (count == 0) {
+      continue;
+    }
+
+    const double mean = (double)sum/count;
+    const double dispersion = (double)sumSquared/count - mean*mean;
+    assert(0 <= dispersion);
+
+    printf("angle: %d\tdist: %.1f\tsquared: %lu\tcount: %d\n", angle, dispersion, sumSquared / 1000000, count);
+
+    if (maxDispersion < dispersion) {
+      maxDispersion = dispersion;
+      slopeAngle = angle;
     }
   }
+
 
   return slopeAngle;
 }
 
 
-void FastHoughTransformer::WriteDrt(const char* fileName) const {
-  cv::imwrite(fileName, drt);
+void FastHoughTransformer::WriteDrt(const char* fileName, int highlightDegree) const {
+  cv::Mat drtHighLighted(drt);
+  const int highlightTheta = (highlightDegree + DegreesInPi/4) * ticksInDegree;
+
+  for (int d = 0; d < drtHighLighted.cols; ++d) {
+    if (highlightTheta != 0) {
+      drtHighLighted.at<int>(highlightTheta-1, d) = 255;
+    }
+    //drtHighLighted.at<int>(highlightTheta, d) = 0;
+    if (highlightTheta != drtHighLighted.cols) {
+      drtHighLighted.at<int>(highlightTheta+1, d) = 255;
+    }
+  }
+
+  cv::imwrite(fileName, drtHighLighted);
 }

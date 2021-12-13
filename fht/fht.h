@@ -4,10 +4,10 @@
 
 class FastHoughTransformer {
   public:
-    FastHoughTransformer(const cv::Mat& I, int thetaDetalization);
+    FastHoughTransformer(const cv::Mat& I);
     int GetDrtMaxDistortionAngle() const;
 
-    void WriteDrt(const char* fileName) const;
+    void WriteDrt(const char* fileName, int highlightDegree) const;
 
   private:
     const int n;
