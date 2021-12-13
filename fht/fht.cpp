@@ -23,6 +23,22 @@ double GridTicksToDegree(int ticks, int ticksInGrid) {
   return (double)ticks / ticksInGrid;
 }
 
+void Normalize(cv::Mat& drt) {
+  double minVal;
+  double maxVal;
+  cv::Point minLoc;
+  cv::Point maxLoc;
+  cv::minMaxLoc(drt, &minVal, &maxVal, &minLoc, &maxLoc);
+
+  for (int theta = 0; theta < drt.rows; ++theta) {
+    for (int d = 0; d < drt.cols; ++d) {
+      const int val = int((double)(drt.at<int>(theta, d) - minVal) / (maxVal - minVal) * 255.);
+      assert(0 <= val && val <= 255);
+      drt.at<int>(theta, d) = val;
+    }
+  }
+}
+
 
 FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetalization):
   n(RoundToNextPowerOf2(std::max(img.cols, img.rows))),
@@ -46,13 +62,13 @@ FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetaliza
 
   const int nSqrt2 = int(n * sqrt(2.));
 
-  cv::Mat drt(
+  cv::Mat drtNew(
       DegreesInPi * ticksInDegree,
       2 * nSqrt2, // both positive and negative d
       CV_32S,
       cv::Scalar(0)
   );
-  cv::swap(this->drt, drt);
+  cv::swap(drt, drtNew);
 
   // Split into channels
   std::vector<cv::Mat> channels;
@@ -62,6 +78,8 @@ FastHoughTransformer::FastHoughTransformer(const cv::Mat& img, int thetaDetaliza
   for (const cv::Mat& channel : channels) {
     FastHoughTransform(channel);
   }
+
+  Normalize(drt);
 }
 
 
@@ -181,14 +199,14 @@ cv::Mat FastHoughTransformer::FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I) 
 
 
 int FastHoughTransformer::GetDrtMaxDistortionAngle() const {
-  int maxDistortion = 0;
+  uint64_t maxDistortion = 0;
   int slopeAngle = 0;
 
-  for (int theta = int(drt.rows/4); theta < int(3*drt.rows/4); ++theta) {
+  for (int theta = 0; theta < drt.rows; ++theta) {
+    uint64_t currentDistortion = 0;
 
-    int currentDistortion = 0;
     for (int d = 0; d < drt.cols; ++d) {
-      const int val = drt.at<int>(theta, d);
+      const uint64_t val = (uint64_t)drt.at<int>(theta, d);
       currentDistortion += val*val;
     }
 
@@ -203,20 +221,5 @@ int FastHoughTransformer::GetDrtMaxDistortionAngle() const {
 
 
 void FastHoughTransformer::WriteDrt(const char* fileName) const {
-  cv::Mat drtu(drt.size(), CV_8U);
-
-  double minVal;
-  double maxVal;
-  cv::Point minLoc;
-  cv::Point maxLoc;
-  minMaxLoc( drt, &minVal, &maxVal, &minLoc, &maxLoc );
-
-  for (int theta = 0; theta < drt.rows; ++theta) {
-    for (int d = 0; d < drt.cols; ++d) {
-      drtu.at<uchar>(theta, d) = int((double)(drt.at<int>(theta, d) - minVal) / (maxVal - minVal) * 255.);
-      assert(0 <= drtu.at<uchar>(theta, d) && drtu.at<uchar>(theta, d) <= 255);
-    }
-  }
-
-  cv::imwrite(fileName, drtu);
+  cv::imwrite(fileName, drt);
 }
