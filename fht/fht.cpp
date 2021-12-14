@@ -129,9 +129,9 @@ cv::Mat FastHoughTransformer::FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I) 
   cv::Mat R(n, 2*n, CV_32S, cv::Scalar(0));
   I.copyTo(R(cv::Rect(0, 0, n, n)));
 
-  for (int i = 1; i <= log2(n); ++i) {
-    cv::Mat Rnew(n, 2*n, CV_32S, cv::Scalar(0));
+  cv::Mat Rnew(n, 2*n, CV_32S, cv::Scalar(0));
 
+  for (int i = 1; i <= log2(n); ++i) {
     const int yStep = pow(2, i);
     const int yStepPrev = pow(2, i-1);
 
@@ -145,7 +145,7 @@ cv::Mat FastHoughTransformer::FastHoughTransformFrom0ToPiDiv4(const cv::Mat& I) 
         }
       }
     }
-    R = Rnew;
+    cv::swap(R, Rnew);
   }
   return R;
 }
@@ -179,32 +179,16 @@ int FastHoughTransformer::GetDrtMaxDistortionAngle() const {
     const double dispersion = (double)sumSquared/count - mean*mean;
     assert(0 <= dispersion);
 
-    printf("angle: %d\tdist: %.1f\tsquared: %lu\tcount: %d\n", angle, dispersion, sumSquared / 1000000, count);
-
     if (maxDispersion < dispersion) {
       maxDispersion = dispersion;
       slopeAngle = angle;
     }
   }
 
-
   return slopeAngle;
 }
 
 
-void FastHoughTransformer::WriteDrt(const char* fileName, int highlightDegree) const {
-  cv::Mat drtHighLighted(drt);
-  const int highlightTheta = (highlightDegree + DegreesInPi/4) * ticksInDegree;
-
-  for (int d = 0; d < drtHighLighted.cols; ++d) {
-    if (highlightTheta != 0) {
-      drtHighLighted.at<int>(highlightTheta-1, d) = 255;
-    }
-    //drtHighLighted.at<int>(highlightTheta, d) = 0;
-    if (highlightTheta != drtHighLighted.cols) {
-      drtHighLighted.at<int>(highlightTheta+1, d) = 255;
-    }
-  }
-
-  cv::imwrite(fileName, drtHighLighted);
+void FastHoughTransformer::WriteDrt(const char* fileName) const {
+  cv::imwrite(fileName, drt);
 }

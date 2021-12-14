@@ -7,7 +7,7 @@ class FastHoughTransformer {
     FastHoughTransformer(const cv::Mat& I);
     int GetDrtMaxDistortionAngle() const;
 
-    void WriteDrt(const char* fileName, int highlightDegree) const;
+    void WriteDrt(const char* fileName) const;
 
   private:
     const int n;
